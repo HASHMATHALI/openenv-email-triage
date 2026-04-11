@@ -1,0 +1,32 @@
+environment:
+  name: email-triage-workplace-assistant
+  version: "1.0.0"
+  description: "Email Triage & Intelligent Workplace Assistant. A realistic simulation of a corporate email inbox."
+  entry_point: "env.environment:EmailEnvironment"
+  max_steps: 50
+
+tasks:
+  easy:
+    description: "Classify emails by urgency (spam / low / medium / urgent)."
+    module: "tasks.easy"
+  medium:
+    description: "Triage + draft a short reply that satisfies tone, brevity, and factual accuracy."
+    module: "tasks.medium"
+  hard:
+    description: "Full inbox zero challenge across 10 emails with cascading dependencies and deadlines."
+    module: "tasks.hard"
+
+graders:
+  easy:
+    module: "graders.easy_grader"
+  medium:
+    module: "graders.medium_grader"
+  hard:
+    module: "graders.hard_grader"
+
+dependencies:
+  python: ">=3.9"
+  packages:
+    - pydantic>=2.0.0
+    - gymnasium>=0.28.1
+    - openai>=1.0.0
