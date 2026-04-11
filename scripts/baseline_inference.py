@@ -14,6 +14,7 @@ from env.models import AgentAction
 
 def format_openai_prompt(obs: dict) -> str:
     """Format the observation space into an LLM prompt."""
+    schema = AgentAction.model_json_schema()
     return f"""
     You are an intelligent workplace assistant managing an email inbox.
     Current Time: {obs['current_time']}
@@ -22,20 +23,29 @@ def format_openai_prompt(obs: dict) -> str:
     Inbox State:
     {json.dumps(obs['inbox'], indent=2)}
     
-    Output a single valid JSON object representing your next action. It MUST match the ActionSpace schema.
-    Allowed action types: classify, reply, delegate, schedule, read, wait
+    Output a single valid JSON object representing your next action. It MUST strictly match this Pydantic schema:
+    {json.dumps(schema, indent=2)}
+    
+    Crucially, the key for the action type is 'action_type', NOT 'action'.
+    Allowed action_types: classify, reply, delegate, schedule, read, wait.
     """
 
 def run_agent(env, max_steps=10):
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "dummy-key"))
+    api_key = os.environ.get("GROQ_API_KEY", os.environ.get("OPENAI_API_KEY", "dummy-key"))
+    
+    # We use the OpenAI client but point it to Groq's high-speed inference engine!
+    client = OpenAI(
+        base_url="https://api.groq.com/openai/v1",
+        api_key=api_key,
+    )
+    
     obs, info = env.reset()
     
     for step in range(max_steps):
         prompt = format_openai_prompt(obs)
         
         try:
-            # Note: For actual execution, requires real OPENAI_API_KEY. Using mock behavior for safety if dummy.
-            if client.api_key == "dummy-key":
+            if api_key == "dummy-key":
                 print("Running without real OpenAI API Key. Mocking a random action...")
                 mock_action = {
                     "action_type": "classify",
@@ -45,7 +55,7 @@ def run_agent(env, max_steps=10):
                 action_text = json.dumps(mock_action)
             else:
                 response = client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="llama-3.3-70b-versatile",
                     messages=[{"role": "user", "content": prompt}],
                     response_format={"type": "json_object"}
                 )
