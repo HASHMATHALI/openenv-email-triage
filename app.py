@@ -19,7 +19,7 @@ st.title("📧 Email Triage & Intelligent Workplace Assistant")
 st.markdown("### Meta OpenEnv Hackathon Submission - Interactive Dashboard")
 st.markdown("This dashboard wraps the standard `OpenEnv` Gym simulation and evaluates the baseline performance.")
 
-st.info("If OPENAI_API_KEY is not set in the environment, the simulation falls back to a deterministic mock agent perfectly fine for demonstrating system routing.")
+st.info("Set GROQ_API_KEY or OPENAI_API_KEY to evaluate an LLM agent. Without a key, a deterministic offline heuristic agent runs instead.")
 
 task_selection = st.selectbox("Select Benchmark Task Category", ["Easy (Urgency Classification)", "Medium (Triage & Reply)", "Hard (Inbox Zero)"])
 
@@ -30,7 +30,7 @@ if st.button("Run Simulation", use_container_width=True):
             st.subheader("📨 Initial Inbox State")
             st.dataframe([e.model_dump() for e in env.unwrapped.initial_emails_payload])
             
-            history, initials = run_agent(env, max_steps=5)
+            history, initials = run_agent(env, max_steps=8)
             score = grade_easy(history, initials)
             
         elif "Medium" in task_selection:

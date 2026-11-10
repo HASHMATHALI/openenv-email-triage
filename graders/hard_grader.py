@@ -23,7 +23,7 @@ def grade_hard(history: List[Tuple[Dict[str, Any], float]], initial_emails: List
             eid = a.get("email_id")
             # If this is one of our urgent ones
             if eid in ["h2", "h4", "h9"]:
-                if eid not in urgent_handles:
+                if eid not in {handled for handled, _ in urgent_handles}:
                     urgent_handles.append((eid, step))
                     
     # Bonus for early handling

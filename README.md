@@ -38,27 +38,49 @@ The OpenEnv environment offers three incrementally scoped benchmarks.
 
 ## Setup & Running the Baseline
 
-Get started in under 3 commands:
+### Local
 
 ```bash
-# 1. Build the Docker environment
-docker build -t openenv-email-triage .
+pip install -r requirements.txt
 
-# 2. Supply your API Key to the environment
-export OPENAI_API_KEY="sk-..."
+# Headless benchmark (all three tasks)
+python scripts/baseline_inference.py
 
-# 3. Run the evaluation baseline
-docker run --rm -e OPENAI_API_KEY=$OPENAI_API_KEY openenv-email-triage
+# Interactive dashboard
+streamlit run app.py
+
+# Tests
+pip install pytest && pytest -q
 ```
 
-## Baseline Evaluation Results (`gpt-4o-mini`)
+### Choosing the agent
 
-Using the native `scripts/baseline_inference.py`, we benchmarked a standard zero-shot LLM reasoning loop.
+| Environment variable | Agent used |
+| :--- | :--- |
+| `GROQ_API_KEY` | Groq, `llama-3.3-70b-versatile` (override with `MODEL_NAME`) |
+| `OPENAI_API_KEY` | OpenAI, `gpt-4o-mini` (override with `MODEL_NAME`) |
+| *(neither)* | Deterministic offline keyword agent in `scripts/heuristic_agent.py` |
 
-| Task Level | Score Achieved / Max | Notes & Failure Modes |
-| :--- | :--- | :--- |
-| **Easy** | 0.75 / 1.00 | Agent reliably finds 'spam', but sometimes misattributes context lacking deep history. |
-| **Medium** | 0.66 / 1.00 | Generated replies are accurate and polite, but often fail strict brevity thresholds. |
-| **Hard** | 1.00 / 10.00 | **Critical Failure**. The agent enters redundant loops attempting to reply linearly and inherently fails to delegate before scheduling. It lacks global temporal awareness. |
+### Docker / Hugging Face Spaces
+
+```bash
+docker build -t openenv-email-triage .
+docker run --rm -p 7860:7860 -e GROQ_API_KEY=$GROQ_API_KEY openenv-email-triage   # dashboard on :7860
+docker run --rm openenv-email-triage python scripts/baseline_inference.py           # headless benchmark
+```
+
+## Baseline Results
+
+Reproducible offline floor (no API key, `scripts/heuristic_agent.py`):
+
+| Task Level | Score / Max |
+| :--- | :--- |
+| **Easy** | 1.00 / 1.00 |
+| **Medium** | 1.00 / 1.00 |
+| **Hard** | 7.00 / 10.00 |
+
+The keyword agent is tuned to these fixed task emails, so treat it as a smoke test of the
+environment and graders rather than a measure of difficulty. LLM agents are evaluated by
+setting one of the API keys above.
 
 _Ready for Hugging Face Spaces `openenv` deployment out of the box._

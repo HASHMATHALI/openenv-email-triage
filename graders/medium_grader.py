@@ -1,3 +1,4 @@
+import re
 from typing import List, Dict, Any, Tuple
 
 def grade_medium(history: List[Tuple[Dict[str, Any], float]], initial_emails: List[Any]) -> Dict[str, Any]:
@@ -17,7 +18,7 @@ def grade_medium(history: List[Tuple[Dict[str, Any], float]], initial_emails: Li
     if not reply_action:
         return {"score": 0.0, "details": ["Agent did not reply."]}
         
-    reply_text = reply_action.get("reply_text", "")
+    reply_text = reply_action.get("reply_text") or ""
     
     # 1. Brevity
     words = reply_text.split()
@@ -37,7 +38,9 @@ def grade_medium(history: List[Tuple[Dict[str, Any], float]], initial_emails: Li
         
     # 3. Tone
     unprofessional_words = ["chill", "whatever", "dunno", "idiot"]
-    if not any(word in reply_text.lower() for word in unprofessional_words) and "hello" in reply_text.lower() or "hi" in reply_text.lower():
+    has_greeting = re.search(r"\b(hello|hi|dear|good (morning|afternoon|evening))\b", reply_text.lower()) is not None
+    is_professional = not any(word in reply_text.lower() for word in unprofessional_words)
+    if is_professional and has_greeting:
         score += 0.34
         details.append("Tone: Check passed (professional greeting, no forbidden words).")
     else:

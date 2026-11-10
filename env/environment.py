@@ -1,6 +1,6 @@
 import gymnasium as gym
 from typing import Any, Dict, Tuple, Optional
-from .models import InboxState, AgentAction, ObservationSpace
+from .models import InboxState, AgentAction, ObservationSpace, CalendarEvent, TaskDelegate
 
 class EmailEnvironment(gym.Env):
     """
@@ -30,9 +30,17 @@ class EmailEnvironment(gym.Env):
         self.current_step = 0
         self.history = []
         
-        # Initialize an empty or task-specific inbox state. Tasks will inject data here.
-        initial_emails = options.get("initial_emails", []) if options else []
-        self.state = InboxState(emails=initial_emails, calendar=[], team_members=["Alice", "Bob"], delegated_tasks=[])
+        # Task factories attach their data as `initial_emails_payload` / `initial_calendar`;
+        # explicit reset options take precedence.
+        options = options or {}
+        initial_emails = options.get("initial_emails", getattr(self, "initial_emails_payload", []))
+        initial_calendar = options.get("initial_calendar", getattr(self, "initial_calendar", []))
+        self.state = InboxState(
+            emails=[e.model_copy(deep=True) for e in initial_emails],
+            calendar=[c.model_copy(deep=True) for c in initial_calendar],
+            team_members=["Alice", "Bob"],
+            delegated_tasks=[],
+        )
         
         obs = self._get_obs()
         info = self._get_info()
@@ -55,8 +63,15 @@ class EmailEnvironment(gym.Env):
         truncated = self.current_step >= self.max_steps
         feedback = f"Action {action.action_type} executed."
         
+        known_ids = {e.id for e in self.state.emails}
+        needs_email = action.action_type in ("classify", "reply", "delegate", "read", "archive")
+
         # Handle state transitions based on action type
-        if action.action_type == "classify":
+        if needs_email and action.email_id not in known_ids:
+            feedback = f"Error: email '{action.email_id}' does not exist in the inbox."
+            reward -= 0.5  # Penalty for acting on a non-existent email
+
+        elif action.action_type == "classify":
             feedback = f"Classified email {action.email_id} as {action.classification}."
             # the grader handles reward for classification, no immediate reward here
             
@@ -69,9 +84,22 @@ class EmailEnvironment(gym.Env):
                 reward -= 0.5  # Penalty for invalid action
             else:
                 feedback = f"Delegated email {action.email_id} to {action.delegate_to}."
+                self.state.delegated_tasks.append(
+                    TaskDelegate(task_id=action.email_id, assignee=action.delegate_to, status="pending")
+                )
                 
         elif action.action_type == "schedule":
-            feedback = f"Scheduled meeting at {action.schedule_time} for {action.schedule_duration} mins."
+            if not action.schedule_time:
+                feedback = "Error: schedule requires schedule_time."
+                reward -= 0.5
+            elif any(event.time == action.schedule_time for event in self.state.calendar):
+                feedback = f"Error: calendar conflict at {action.schedule_time}."
+                reward -= 0.5
+            else:
+                feedback = f"Scheduled meeting at {action.schedule_time} for {action.schedule_duration} mins."
+                self.state.calendar.append(
+                    CalendarEvent(title=f"Meeting re: {action.email_id or 'ad hoc'}", time=action.schedule_time, participants=[])
+                )
 
         self.history.append((action.model_dump(), reward))
         obs = self._get_obs(feedback=feedback, success=reward >= 0)
