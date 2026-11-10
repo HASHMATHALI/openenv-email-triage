@@ -23,7 +23,7 @@ st.info("Set GROQ_API_KEY or OPENAI_API_KEY to evaluate an LLM agent. Without a 
 
 task_selection = st.selectbox("Select Benchmark Task Category", ["Easy (Urgency Classification)", "Medium (Triage & Reply)", "Hard (Inbox Zero)"])
 
-if st.button("Run Simulation", use_container_width=True):
+if st.button("Run Simulation", width="stretch"):
     with st.spinner("Initializing OpenEnv Context and Agent Reasoning Loop..."):
         if "Easy" in task_selection:
             env = get_task_easy_env()
