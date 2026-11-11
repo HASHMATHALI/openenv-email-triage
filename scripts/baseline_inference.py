@@ -49,6 +49,33 @@ def _build_agent():
     return None, None, HeuristicAgent()
 
 
+def make_policy():
+    """Returns (name, policy) where policy maps an observation dict to an action dict.
+
+    Used by the Inbox Arena dashboard. A policy that cannot produce a valid
+    action returns {"action_type": "wait"}, which ends its run.
+    """
+    client, model, fallback_agent = _build_agent()
+    if fallback_agent is not None:
+        return "Keyword bot (offline)", fallback_agent.act
+
+    def policy(obs: dict) -> dict:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": format_openai_prompt(obs)}],
+                response_format={"type": "json_object"},
+            )
+            action = json.loads(response.choices[0].message.content)
+            AgentAction(**action)
+            return action
+        except Exception as e:
+            print(f"Agent failed to generate a valid action: {e}")
+            return {"action_type": "wait"}
+
+    return f"LLM ({model})", policy
+
+
 def run_agent(env, max_steps=10):
     client, model, fallback_agent = _build_agent()
 

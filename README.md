@@ -1,4 +1,42 @@
-# Email Triage & Intelligent Workplace Assistant: An OpenEnv Benchmark
+# Inbox Arena — an email-triage benchmark you can play
+
+An OpenEnv/Gymnasium environment for evaluating agents on realistic inbox work, with one twist:
+**you can sit in the other corner.** The dashboard hands you the same inbox the agent gets, runs
+your decisions through the same environment and scores you with the same graders.
+
+Benchmarks usually report a number. Playing the round yourself is the fastest way to learn what
+that number rewards, where the grader is strict, and whether an agent's 7/10 is impressive or lazy.
+
+## What the arena adds
+
+- **Player vs agent.** Choose an action and a handling order for every email, lock it in, then
+  release the agent. Scores sit side by side with a play-by-play of each step and the referee's notes.
+- **Named failures, not just scores.** Every run is tagged with what went wrong: *acted on a
+  phantom email*, *double-booked the calendar*, *delegated to nobody*, *repeated itself*, *never
+  touched an urgent email*.
+- **Shuffle probe.** Re-deal the inbox with a seed. A contestant that depends on where the urgent
+  emails sit, rather than what they say, loses points.
+- **Any agent in the corner.** `GROQ_API_KEY` or `OPENAI_API_KEY` puts an LLM there; with neither, an
+  offline keyword bot stands in so everything runs without network access.
+- **Session board.** Every run in the session is kept for comparison.
+
+```bash
+pip install -r requirements.txt
+streamlit run app.py                    # the arena
+python scripts/baseline_inference.py    # headless benchmark, all three rounds
+pip install pytest && pytest -q         # 11 tests
+```
+
+`arena.py` holds the runner (`play`, `play_agent`, `failure_tags`, `make_env`) with no UI imports,
+so it doubles as a small harness for scripting your own agents:
+
+```python
+import arena
+result = arena.play_agent("hard", "my-agent", my_policy, shuffle_seed=3)   # policy: observation dict -> action dict
+print(result.score, result.tags)
+```
+
+---
 
 ## Abstract
 Modern Language Models excel at isolated reasoning, yet deploying them as autonomous workplace agents exposes a devastating fragility: they fail to navigate the messy, asynchronous, and socially nuanced realities of corporate environments. We present the **Email Triage & Intelligent Workplace Assistant**, an open-source OpenEnv simulation tailored for evaluating autonomous agents in high-stakes office scenarios. This environment exposes the agent to realistic noise, complex dependency chains, and competing urgencies via a multidimensional reward function, proving that genuine autonomy requires more than just Next Token Prediction—it requires organizational intuition.
